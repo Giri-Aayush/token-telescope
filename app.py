@@ -47,20 +47,26 @@ def predict_contract_address():
         # Get the current timestamp
         timestamp = datetime.datetime.now().isoformat()
 
-        # Insert the data into the Supabase table
-        data = {
-            'contract_address': contract_address,
-            'predicted_address': predicted_address,
-            'block_number': block_number,
-            'timestamp': timestamp,
-            'nonce': nonce if nonce is not None else current_nonce
-        }
-        supabase.table('predictions').insert(data).execute()
+        # Get the balance of the contract address
+        balance = web3.eth.get_balance(contract_address)
+        balance_in_eth = web3.from_wei(balance, 'ether')
 
-        return jsonify({'predictedAddress': predicted_address})
+        if balance_in_eth > 1.5:
+            # Insert the data into the Supabase table only if balance is greater than 1.5 ETH
+            data = {
+                'contract_address': contract_address,
+                'predicted_address': predicted_address,
+                'block_number': block_number,
+                'timestamp': timestamp,
+                'nonce': nonce if nonce is not None else current_nonce,
+                'balance': float(balance_in_eth)  # Convert balance to float
+            }
+            supabase.table('predictions').insert(data).execute()
+
+        return jsonify({'predictedAddress': predicted_address, 'balance': float(balance_in_eth)})  # Convert balance to float
 
     except Exception as e:
-        print('Error in /predict endpoint:', e)
+        print(f"Error in /predict endpoint: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
