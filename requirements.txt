@@ -2,3 +2,4 @@ flask
 web3
 rlp
 supabase
+python-dotenv

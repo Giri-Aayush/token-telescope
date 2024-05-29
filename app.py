@@ -3,16 +3,20 @@ from web3 import Web3
 import rlp
 from supabase import create_client, Client
 import datetime
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
 app = Flask(__name__)
 
 # Supabase configuration
-supabase_url = 'https://mxhuvibqbrmyyksiuzcr.supabase.co'
-supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14aHV2aWJxYnJteXlrc2l1emNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTY5ODI3NjAsImV4cCI6MjAzMjU1ODc2MH0.f5wCBeFIKU2v04T1CVw6X3sgqiazkk0xRZZI-yAq2T8'
+supabase_url = os.environ.get('SUPABASE_URL')
+supabase_key = os.environ.get('SUPABASE_KEY')
 supabase: Client = create_client(supabase_url, supabase_key)
 
 # Web3 configuration
-web3 = Web3(Web3.HTTPProvider('https://eth-mainnet.g.alchemy.com/v2/IJbweBVOnwnTeoaIg10-jGVFe8aPfaH5'))
+alchemy_api_key = os.environ.get('ALCHEMY_API_KEY')
+web3 = Web3(Web3.HTTPProvider(f'https://eth-mainnet.g.alchemy.com/v2/{alchemy_api_key}'))
 
 def mk_contract_address(sender, nonce):
     return Web3.keccak(rlp.encode([Web3.to_bytes(hexstr=sender), nonce]))[12:]
