@@ -23,6 +23,8 @@ const authMiddleware = async (req, res, next) => {
     res.status(400).send('Invalid Token');
   }
 };
+//This is a test Comment
+
 
 // Register
 app.post('/api/register', async (req, res) => {
