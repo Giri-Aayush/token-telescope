@@ -96,32 +96,7 @@ function WaitlistForm() {
         >
           Contract Address Predictor{" "}
         </GradientText>
-        <TextField
-          type="text"
-          placeholder="hi@gamil.com"
-          variant="outlined"
-          sx={{
-            marginTop: 3,
-            backgroundColor: "#1b1b1b",
-            borderColor: "#666666",
-            "& .MuiOutlinedInput-root": {
-              "& fieldset": {
-                borderColor: "#666666",
-              },
-              "&:hover fieldset": {
-                borderColor: "#ffffff",
-              },
-              "&.Mui-focused fieldset": {
-                borderColor: "#00bfa5",
-              },
-            },
-            input: {
-              color: "#ffffff",
-              padding: "16px",
-            },
-          }}
-          fullWidth
-        />
+        <br></br>
 
         <TextField
           type="text"
@@ -150,7 +125,6 @@ function WaitlistForm() {
           }}
           fullWidth
         />
-
         <FormControl fullWidth sx={{ marginTop: 3 }}>
           <InputLabel id="select-chain-label">Select Chain</InputLabel>
           <Select

@@ -2,7 +2,7 @@ import React from 'react';
 import { ThemeProvider, createTheme, CssBaseline, Box, Typography } from '@mui/material';
 import WaitlistForm from './components/WaitlistForm';
 import { styled } from "@mui/system";
-
+import HeroSection from './components/Hero';
 const theme = createTheme({
   palette: {
     mode: 'dark',
@@ -39,11 +39,8 @@ function App() {
           textAlign: 'center',
         }}
       >
-        <GradientText variant="h2" paddingTop={10} sx={{ fontSize: { md: '6rem', xs: '3rem' }, fontWeight: 'bold' }}>
-          Token Telescope
-        </GradientText>
+        <HeroSection />
         <WaitlistForm />
-        
       </Box>
     </ThemeProvider>
   );
