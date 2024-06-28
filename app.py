@@ -5,10 +5,14 @@ from supabase import create_client, Client
 import datetime
 from dotenv import load_dotenv
 import os
-
-load_dotenv()
+from flask_cors import CORS, cross_origin
+# from bitpay import Client as Bitpay_Client
+import sys
 app = Flask(__name__)
-
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
+load_dotenv()
+# print(sys.path)
 # Supabase configuration
 supabase_url = os.environ.get('SUPABASE_URL')
 supabase_key = os.environ.get('SUPABASE_KEY')
@@ -17,7 +21,8 @@ supabase: Client = create_client(supabase_url, supabase_key)
 # Web3 configuration
 alchemy_api_key = os.environ.get('ALCHEMY_API_KEY')
 web3 = Web3(Web3.HTTPProvider(f'https://eth-mainnet.g.alchemy.com/v2/{alchemy_api_key}'))
-
+# bitpay = Bitpay_Client.create_client_by_config_file_path("./bitpay.config.json")
+# console.log(bitpay)
 def mk_contract_address(sender, nonce):
     return Web3.keccak(rlp.encode([Web3.to_bytes(hexstr=sender), nonce]))[12:]
 
@@ -28,17 +33,12 @@ def get_contract_address(sender, nonce):
 @app.route('/predict', methods=['POST'])
 def predict_contract_address():
     try:
-        print(f"Content-Type: {request.content_type}")
-        print(f"Request data: {request.data}")
-
         if request.content_type != 'application/json':
             return jsonify({'error': "Unsupported Media Type: Content-Type must be 'application/json'"}), 415
-
         data = request.get_json()
         if data is None:
             return jsonify({'error': 'Invalid JSON'}), 400
 
-        print(f"Parsed JSON data: {data}")
 
         contract_address = data.get('contractAddress')
         nonce = data.get('nonce')
@@ -46,8 +46,6 @@ def predict_contract_address():
         if not contract_address:
             return jsonify({'error': 'Missing contractAddress parameter'}), 400
 
-        print(f"Contract Address: {contract_address}")
-        print(f"Nonce: {nonce}")
 
         # Get the current block number
         block_number = web3.eth.block_number
@@ -83,8 +81,8 @@ def predict_contract_address():
                 'nonce': nonce if nonce is not None else current_nonce,
                 'balance': float(balance_in_eth)  # Convert balance to float
             }
-            print(data)
-            response = supabase.table('Public Keys').insert(data).execute()
+            print("Entered this case")
+            response = supabase.table('predictions').insert(data).execute()
             print(f"Supabase insert response: {response}")
 
         return jsonify({'predictedAddress': predicted_address, 'balance': float(balance_in_eth)})  # Convert balance to float

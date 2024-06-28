@@ -3,3 +3,4 @@ web3
 rlp
 supabase
 python-dotenv
+flask_cors

@@ -12,6 +12,7 @@ import {
   FormControlLabel,
 } from "@mui/material";
 import { styled } from "@mui/system";
+import axios from "axios";
 
 const GradientText = styled(Typography)({
   background: "linear-gradient(to bottom, #cccccc, #666666)",
@@ -46,6 +47,9 @@ function WaitlistForm() {
   const [chain, setChain] = useState("Ethereum Mainnet");
   const [customNonce, setCustomNonce] = useState(false);
   const [nonce, setNonce] = useState("");
+  const [walletAddress, setWalletAddress] = useState("");
+  const [predictedAddress, setPredictedAddress] = useState(null);
+  const [balance, setBalance] = useState(null);
 
   const handleChainChange = (event) => {
     setChain(event.target.value);
@@ -57,6 +61,28 @@ function WaitlistForm() {
 
   const handleNonceChange = (event) => {
     setNonce(event.target.value);
+  };
+
+  const handleWalletAddressChange = (event) => {
+    setWalletAddress(event.target.value);
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    try {
+      window.location.href = "https://commerce.coinbase.com/checkout/019e71b8-752e-457d-89cf-5d782624aab2";
+      const response = await axios.post("http://127.0.0.1:5000/predict", {
+        contractAddress: walletAddress,
+        nonce: customNonce ? parseInt(nonce, 10) : 0,
+      });
+  
+      console.log(response);
+      setPredictedAddress(response.data.predictedAddress);
+      setBalance(response.data.balance);
+    } catch (error) {
+      console.error("Error predicting contract address:", error);
+    }
   };
 
   return (
@@ -84,7 +110,6 @@ function WaitlistForm() {
           minWidth: "960px",
           paddingLeft: 8,
           paddingRight: 8,
-
           display: "flex",
           flexDirection: "column",
           zIndex: 2,
@@ -97,12 +122,13 @@ function WaitlistForm() {
           Contract Address Predictor{" "}
         </GradientText>
         <br></br>
-
         <TextField
           type="text"
           placeholder="Ex: 0xD5a63CCE627372481b30AE24c31a3Fb94913D5Be"
           label="Wallet Address"
           variant="outlined"
+          value={walletAddress}
+          onChange={handleWalletAddressChange}
           sx={{
             marginTop: 3,
             backgroundColor: "#1b1b1b",
@@ -199,11 +225,21 @@ function WaitlistForm() {
           />
         )}
 
-        <CustomButton variant="contained">
-          Find Smart Contract Address
+        <CustomButton variant="contained" onClick={handleSubmit}>
+          Submit
         </CustomButton>
 
-        <CustomButton variant="contained">Submit</CustomButton>
+        {predictedAddress && (
+          <Typography variant="h6" sx={{ marginTop: 3, color: "#ffffff" }}>
+            Predicted Address: {predictedAddress}
+          </Typography>
+        )}
+
+        {balance !== null && (
+          <Typography variant="h6" sx={{ marginTop: 1, color: "#ffffff" }}>
+            Balance: {balance} ETH
+          </Typography>
+        )}
       </Box>
       <BackgroundBeams />
     </Box>

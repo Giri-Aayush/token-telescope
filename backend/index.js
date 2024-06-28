@@ -1,117 +1,146 @@
-require('dotenv').config();
 const express = require('express');
-const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const supabase = require('./supabaseClient');
+const axios = require('axios');
 
 const app = express();
-app.use(express.json());
+app.use(bodyParser.json());
 
-const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET;
+const PORT = process.env.PORT || 4000;
+const JWT_SECRET = 'your_jwt_secret';
 
-// Middleware to protect routes
-const authMiddleware = async (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-  if (!token) return res.status(401).send('Access Denied');
+// MongoDB connection
+mongoose.connect('mongodb+srv://ajstylesmb:O91svz4J7Od2NM2A@accounts.eixze7u.mongodb.net/', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
-  try {
-    const verified = jwt.verify(token, JWT_SECRET);
-    req.user = verified;
-    next();
-  } catch (err) {
-    res.status(400).send('Invalid Token');
+// User Schema
+const userSchema = new mongoose.Schema({
+  username: { type: String, unique: true },
+  password: String,
+  apiCallCount: { type: Number, default: 0 },
+});
+
+const User = mongoose.model('User', userSchema);
+
+// Middleware to authenticate JWT token
+const authenticateJWT = (req, res, next) => {
+  const token = req.headers.authorization;
+  if (token) {
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+      if (err) {
+        console.log("JWT verification failed:", err);
+        return res.sendStatus(403);
+      }
+      req.user = user;
+      next();
+    });
+  } else {
+    console.log("Authorization header not found");
+    res.sendStatus(401);
   }
 };
-//This is a test Comment
 
-
-// Register
-app.post('/api/register', async (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) return res.status(400).send('Email and password are required');
-
-  const { data: userExists } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', email)
-    .single();
-
-  if (userExists) return res.status(400).send('Email already exists');
-
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
-
-  const { data, error } = await supabase
-    .from('users')
-    .insert([{ email, password: hashedPassword, usage_count: 0, plan: 'none' }]);
-
-  if (error) return res.status(400).send('Error registering user');
-
-  res.send('User registered successfully');
+// Check the health of the Server
+app.get('/', async (req, res) => {
+  console.log("The API is working fine");
+  res.status(200).send("The API is working just fine");
 });
 
-// Login
-app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
+// Registration endpoint
+app.post('/register', async (req, res) => {
+  console.log("Entered the Register Endpoint", req.body);
+  const { username, password } = req.body;
 
-  if (!email || !password) return res.status(400).send('Email and password are required');
-
-  const { data: user, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', email)
-    .single();
-
-  if (error || !user) return res.status(400).send('Invalid email or password');
-
-  const validPass = await bcrypt.compare(password, user.password);
-  if (!validPass) return res.status(400).send('Invalid email or password');
-
-  const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET);
-  res.header('Authorization', 'Bearer ' + token).send({ token, user });
-});
-
-// Get user info (protected route)
-app.get('/api/user', authMiddleware, async (req, res) => {
-  const { data: user, error } = await supabase
-    .from('users')
-    .select('id, email, usage_count, plan')
-    .eq('id', req.user.id)
-    .single();
-
-  if (error) return res.status(400).send('User not found');
-
-  res.send(user);
-});
-
-// Increment usage count (protected route)
-app.post('/api/use-service', authMiddleware, async (req, res) => {
-  const { data: user, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', req.user.id)
-    .single();
-
-  if (error) return res.status(400).send('User not found');
-
-  if (user.plan !== 'lifetime' && user.usage_count <= 0) {
-    return res.status(400).send('No usage left, please purchase more');
+  // Check for existing username
+  const existingUser = await User.findOne({ username });
+  if (existingUser) {
+    console.log("Username already exists:", username);
+    return res.status(400).send('Username already exists');
   }
 
-  const newUsageCount = user.plan === 'lifetime' ? user.usage_count : user.usage_count - 1;
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const newUser = new User({ username, password: hashedPassword });
+  await newUser.save();
+  console.log("User registered:", username);
+  res.status(201).send('User registered');
+});
 
-  const { error: updateError } = await supabase
-    .from('users')
-    .update({ usage_count: newUsageCount })
-    .eq('id', req.user.id);
+// Login endpoint
+app.post('/login', async (req, res) => {
+  console.log("Entered the Login Endpoint", req.body);
+  const { username, password } = req.body;
+  const user = await User.findOne({ username });
+  if (user && await bcrypt.compare(password, user.password)) {
+    const token = jwt.sign({ username: user.username }, JWT_SECRET);
+    console.log("Login successful:", username);
+    res.json({ token });
+  } else {
+    console.log("Invalid credentials:", username);
+    res.status(401).send('Invalid credentials');
+  }
+});
 
-  if (updateError) return res.status(400).send('Error updating usage count');
+// Predict endpoint
+app.post('/predict', authenticateJWT, async (req, res) => {
+  console.log("Entered the Predict Endpoint", req.body);
+  const { contractAddress, nonce } = req.body;
+  const user = await User.findOne({ username: req.user.username });
 
-  res.send('Service used, remaining count: ' + newUsageCount);
+  // Check if the user has remaining API calls
+  if (user.apiCallCount <= 0) {
+    console.log("API call limit reached for user:", user.username);
+    return res.status(403).send('API call limit reached');
+  }
+
+  // Call the Python API
+  try {
+    const response = await axios.post('http://127.0.0.1:5000/predict', { contractAddress, nonce });
+    user.apiCallCount -= 1;
+    await user.save();
+    console.log("API call successful for user:", user.username);
+    res.json(response.data);
+  } catch (error) {
+    console.error("Error calling prediction API:", error);
+    res.status(500).send('Error calling prediction API');
+  }
+});
+
+// Endpoint to increase API call count
+app.post('/increase-api-count', authenticateJWT, async (req, res) => {
+  console.log("Entered the Increase API Count Endpoint", req.body);
+  const { increment } = req.body;
+  const user = await User.findOne({ username: req.user.username });
+
+  user.apiCallCount += increment;
+  await user.save();
+  console.log(`Increased API call count for user ${user.username} by ${increment}. New count: ${user.apiCallCount}`);
+  res.status(200).send(`API call count increased by ${increment}. New count: ${user.apiCallCount}`);
+});
+
+// Coinbase webhook endpoint (handle payments)
+app.post('/webhook', async (req, res) => {
+  console.log("Entered the Webhook Endpoint", req.body);
+  // Handle the webhook logic here
+  const event = req.body;
+
+  // Example: Update the user's API call count upon successful payment
+  if (event.type === 'charge:confirmed') {
+    const { username } = event.data.metadata; // Assuming username is sent in metadata
+    const user = await User.findOne({ username });
+    if (user) {
+      user.apiCallCount += 100; // Example: Add 100 API calls upon successful payment
+      await user.save();
+      console.log(`Added 100 API calls to user ${username}. New count: ${user.apiCallCount}`);
+    }
+  }
+
+  res.sendStatus(200);
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
