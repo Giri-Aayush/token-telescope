@@ -1,8 +1,7 @@
 import React from 'react';
 import { ThemeProvider, createTheme, CssBaseline, Box, Typography } from '@mui/material';
-import WaitlistForm from './components/WaitlistForm';
 import { styled } from "@mui/system";
-import HeroSection from './components/Hero';
+import Screen from "./components/Screen"
 const theme = createTheme({
   palette: {
     mode: 'dark',
@@ -39,8 +38,7 @@ function App() {
           textAlign: 'center',
         }}
       >
-        <HeroSection />
-        <WaitlistForm />
+        <Screen />
       </Box>
     </ThemeProvider>
   );
