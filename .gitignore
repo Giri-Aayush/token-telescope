@@ -3,3 +3,5 @@
 node_modules
 /backend/.env
 bitpay.config.json
+/telegram-bot/config.json
+/telegram-bot/.env
